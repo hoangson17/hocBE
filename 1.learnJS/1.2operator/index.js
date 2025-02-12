@@ -39,9 +39,9 @@ let km = prompt();
 if(km <= RANGE1){
     total+=RANGE1*PRICE1;
 }else if(km <=5 ){
-    total = RANGE1*PRICE1 + ((km-1)*PRICE2);
+    total = RANGE1*PRICE1 + ((km-RANGE1)*PRICE2);
 }else if(km >5 ){
-    total = RANGE1*PRICE1 + (RANGE2 -RANGE1) * PRICE2+ ((km-5)*PRICE3);
+    total = RANGE1*PRICE1 + (RANGE2 -RANGE1) * PRICE2+ ((km-RANGE2)*PRICE3);
 }
 console.log(total);
 
