@@ -1,0 +1,1 @@
+console.log('học js không khó');
