@@ -16,7 +16,6 @@ let filter = () => products.map((item) => {
 filter();
 
 // Tính tổng giá của tất cả sản phẩm trong danh mục "Electronics".
-
 let sum = 0;
 products.forEach((item) => {
     if (item['category'] === "Electronics") {
