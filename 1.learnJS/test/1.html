@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced JS Game</title>
+    <style>
+        body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background: #222; }
+        canvas { background: #333; display: block; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        #gameInfo { position: absolute; top: 10px; left: 10px; color: white; font-family: Arial; }
+    </style>
+</head>
+<body>
+    <div id="gameInfo">Level: 1 | Score: 0 | Health: 100%</div>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const gameInfo = document.getElementById("gameInfo");
+        
+        // Game objects
+        let player, enemies, collectibles, projectiles, particles;
+        let keys = {};
+        let score = 0;
+        let level = 1;
+        let spawnTimer = 0;
+        let lastShot = 0;
+        let animationFrame = 0;
+        let gameOver = false;
+
+        // Audio context
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+        function resetGame() {
+            player = { 
+                x: 50, 
+                y: 50, 
+                size: 20, 
+                speed: 5,
+                baseSpeed: 5,
+                color: "#3498db",
+                maxHealth: 100,
+                health: 100
+            };
+            
+            enemies = [];
+            collectibles = [spawnCollectible()];
+            projectiles = [];
+            particles = [];
+            score = 0;
+            level = 1;
+            spawnTimer = 0;
+            gameOver = false;
+            
+            updateGameInfo();
+            
+            window.removeEventListener("keydown", onKeyDown);
+            window.removeEventListener("keyup", onKeyUp);
+            window.addEventListener("keydown", onKeyDown);
+            window.addEventListener("keyup", onKeyUp);
+        }
+        
+        function spawnCollectible() {
+            const types = ['normal', 'speed', 'health'];
+            const type = types[Math.floor(Math.random() * types.length)];
+            
+            return {
+                x: Math.random() * (canvas.width - 20),
+                y: Math.random() * (canvas.height - 20),
+                size: 10,
+                type: type
+            };
+        }
+
+        function spawnEnemy() {
+            const size = 20 + (level * 2);
+            return {
+                x: Math.random() > 0.5 ? 0 : canvas.width,
+                y: Math.random() * canvas.height,
+                size: size,
+                speed: 1.5 + (level * 0.3),
+                health: 50 + (level * 10)
+            };
+        }
+
+        function createParticles(x, y, color = "#e74c3c") {
+            for(let i = 0; i < 15; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    dx: (Math.random() - 0.5) * 5,
+                    dy: (Math.random() - 0.5) * 5,
+                    size: Math.random() * 4 + 1,
+                    color: color,
+                    life: 1.0
+                });
+            }
+        }
+
+        function playSound(freq, duration, type = "sine") {
+            if (audioContext.state === "suspended") {
+                audioContext.resume();
+            }
+            
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.type = type;
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = freq;
+            gainNode.gain.value = 0.1;
+            
+            oscillator.start();
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + duration);
+            oscillator.stop(audioContext.currentTime + duration);
+        }
+
+        function onKeyDown(e) {
+            keys[e.key] = true;
+        }
+
+        function onKeyUp(e) {
+            keys[e.key] = false;
+        }
+
+        function updateGameInfo() {
+            gameInfo.textContent = `Level: ${level} | Score: ${score} | Health: ${player.health}%`;
+        }
+
+        window.addEventListener("keydown", onKeyDown);
+        window.addEventListener("keyup", onKeyUp);
+
+        function update() {
+            if (gameOver) return;
+            
+            // Player movement
+            const moveX = (keys["ArrowRight"] ? 1 : 0) - (keys["ArrowLeft"] ? 1 : 0);
+            const moveY = (keys["ArrowDown"] ? 1 : 0) - (keys["ArrowUp"] ? 1 : 0);
+            
+            player.x = Math.max(0, Math.min(canvas.width - player.size, player.x + moveX * player.speed));
+            player.y = Math.max(0, Math.min(canvas.height - player.size, player.y + moveY * player.speed));
+            
+            // Shooting
+            if (keys[" "] && Date.now() - lastShot > 300) {
+                const directionX = moveX !== 0 ? moveX : 1;
+                const directionY = moveY !== 0 ? moveY : 0;
+                
+                projectiles.push({
+                    x: player.x + player.size/2,
+                    y: player.y + player.size/2,
+                    dx: directionX * 8,
+                    dy: directionY * 8,
+                    size: 5,
+                    damage: 20 + (level * 2)
+                });
+                
+                lastShot = Date.now();
+                playSound(523.25, 0.1, "square");
+            }
+            
+            // Update projectiles
+            projectiles.forEach((p, i) => {
+                p.x += p.dx;
+                p.y += p.dy;
+                
+                // Remove if out of bounds
+                if (p.x < 0 || p.x > canvas.width || p.y < 0 || p.y > canvas.height) {
+                    projectiles.splice(i, 1);
+                    return;
+                }
+                
+                // Check enemy hits
+                enemies.forEach((enemy, j) => {
+                    if (Math.abs(p.x - (enemy.x + enemy.size/2)) < enemy.size/2 && 
+                        Math.abs(p.y - (enemy.y + enemy.size/2)) < enemy.size/2) {
+                        
+                        enemy.health -= p.damage;
+                        createParticles(p.x, p.y, "#f1c40f");
+                        projectiles.splice(i, 1);
+                        
+                        if (enemy.health <= 0) {
+                            createParticles(enemy.x + enemy.size/2, enemy.y + enemy.size/2);
+                            enemies.splice(j, 1);
+                            score += Math.floor(enemy.size / 5);
+                            playSound(392.00, 0.2, "triangle");
+                        }
+                    }
+                });
+            });
+            
+            // Spawn enemies
+            spawnTimer++;
+            if (spawnTimer > 300 - (level * 20)) {
+                enemies.push(spawnEnemy());
+                spawnTimer = 0;
+                
+                if (enemies.length % 5 === 0) {
+                    level++;
+                }
+            }
+            
+            // Update enemies
+            enemies.forEach(enemy => {
+                // Simple AI: move toward player
+                const dx = player.x - enemy.x;
+                const dy = player.y - enemy.y;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                
+                enemy.x += (dx / dist) * enemy.speed;
+                enemy.y += (dy / dist) * enemy.speed;
+                
+                // Check collision with player
+                if (Math.abs(player.x - enemy.x) < player.size && 
+                    Math.abs(player.y - enemy.y) < player.size) {
+                    
+                    player.health -= 10;
+                    createParticles(player.x + player.size/2, player.y + player.size/2, "#3498db");
+                    playSound(220.00, 0.1, "sawtooth");
+                    
+                    if (player.health <= 0) {
+                        gameOver = true;
+                        setTimeout(() => {
+                            alert(`Game Over! Final Score: ${score}`);
+                            resetGame();
+                        }, 500);
+                    }
+                }
+            });
+            
+            // Update particles
+            particles.forEach((p, i) => {
+                p.x += p.dx;
+                p.y += p.dy;
+                p.life -= 0.02;
+                if (p.life <= 0) particles.splice(i, 1);
+            });
+            
+            // Check collectibles
+            collectibles.forEach((item, i) => {
+                if (Math.abs(player.x - item.x) < player.size && 
+                    Math.abs(player.y - item.y) < player.size) {
+                    
+                    switch(item.type) {
+                        case 'normal':
+                            score += 5;
+                            playSound(659.25, 0.1);
+                            break;
+                        case 'speed':
+                            player.speed = player.baseSpeed * 1.5;
+                            setTimeout(() => {
+                                player.speed = player.baseSpeed;
+                            }, 5000);
+                            playSound(783.99, 0.2);
+                            break;
+                        case 'health':
+                            player.health = Math.min(player.maxHealth, player.health + 30);
+                            playSound(523.25, 0.3, "sine");
+                            break;
+                    }
+                    
+                    createParticles(item.x + item.size/2, item.y + item.size/2, item.type === 'health' ? "#2ecc71" : "#f1c40f");
+                    collectibles[i] = spawnCollectible();
+                }
+            });
+            
+            // Spawn new collectibles occasionally
+            if (Math.random() < 0.01 && collectibles.length < 5) {
+                collectibles.push(spawnCollectible());
+            }
+            
+            updateGameInfo();
+            animationFrame++;
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw collectibles
+            collectibles.forEach(item => {
+                ctx.fillStyle = 
+                    item.type === 'normal' ? "#f1c40f" : 
+                    item.type === 'speed' ? "#9b59b6" : "#2ecc71";
+                
+                ctx.beginPath();
+                ctx.arc(item.x + item.size/2, item.y + item.size/2, item.size/2, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Add icon for special collectibles
+                if (item.type !== 'normal') {
+                    ctx.fillStyle = "white";
+                    ctx.font = `${item.size}px Arial`;
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
+                    ctx.fillText(
+                        item.type === 'speed' ? "⚡" : "❤", 
+                        item.x + item.size/2, 
+                        item.y + item.size/2
+                    );
+                }
+            });
+            
+            // Draw particles
+            particles.forEach(p => {
+                ctx.globalAlpha = p.life;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1;
+            
+            // Draw enemies
+            enemies.forEach(enemy => {
+                // Health bar
+                ctx.fillStyle = "rgba(0,0,0,0.5)";
+                ctx.fillRect(enemy.x, enemy.y - 10, enemy.size, 5);
+                ctx.fillStyle = "#e74c3c";
+                ctx.fillRect(enemy.x, enemy.y - 10, enemy.size * (enemy.health / (50 + (level * 10))), 5);
+                
+                // Enemy body
+                ctx.fillStyle = "#e74c3c";
+                ctx.beginPath();
+                ctx.arc(
+                    enemy.x + enemy.size/2, 
+                    enemy.y + enemy.size/2, 
+                    enemy.size/2, 
+                    0, 
+                    Math.PI * 2
+                );
+                ctx.fill();
+                
+                // Enemy eyes
+                ctx.fillStyle = "white";
+                ctx.beginPath();
+                ctx.arc(
+                    enemy.x + enemy.size/3, 
+                    enemy.y + enemy.size/3, 
+                    enemy.size/8, 
+                    0, 
+                    Math.PI * 2
+                );
+                ctx.arc(
+                    enemy.x + enemy.size - enemy.size/3, 
+                    enemy.y + enemy.size/3, 
+                    enemy.size/8, 
+                    0, 
+                    Math.PI * 2
+                );
+                ctx.fill();
+            });
+            
+            // Draw projectiles
+            ctx.fillStyle = "#f39c12";
+            projectiles.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            
+            // Draw player
+            ctx.save();
+            ctx.translate(player.x + player.size/2, player.y + player.size/2);
+            ctx.rotate(Math.sin(animationFrame/10) * 0.1);
+            
+            // Player body
+            ctx.fillStyle = player.color;
+            ctx.beginPath();
+            ctx.arc(0, 0, player.size/2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Player eyes
+            ctx.fillStyle = "white";
+            ctx.beginPath();
+            ctx.arc(-player.size/6, -player.size/8, player.size/8, 0, Math.PI * 2);
+            ctx.arc(player.size/6, -player.size/8, player.size/8, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Player mouth
+            ctx.strokeStyle = "white";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(0, 0, player.size/4, 0.2, Math.PI - 0.2);
+            ctx.stroke();
+            
+            ctx.restore();
+            
+            // Health bar
+            ctx.fillStyle = "rgba(0,0,0,0.5)";
+            ctx.fillRect(player.x, player.y - 15, player.size, 5);
+            ctx.fillStyle = player.health > 30 ? "#2ecc71" : "#e74c3c";
+            ctx.fillRect(player.x, player.y - 15, player.size * (player.health / player.maxHealth), 5);
+        }
+
+        function gameLoop() {
+            if (!gameOver) {
+                update();
+                draw();
+            }
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Start the game
+        resetGame();
+        gameLoop();
+    </script>
+</body>
+</html>

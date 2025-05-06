@@ -13,11 +13,34 @@ const tasks = Array.from(
 // Chỉ chạy tối đa limit Promise cùng lúc.
 // Khi một Promise hoàn thành, một Promise mới được thêm vào.
 
-async function runWithLimit(tasks, limit) {
-  for (let i = 0; i < limit; i++) {
-    console.log(await tasks[i]());
-  }
+function runWithLimit(tasks, limit) {
+  return new Promise((resolve)=>{
+    let runningCount = 0;
+    let index = 0;
+    let results = [];
 
+    function next(){
+      if(index >= tasks.length&&runningCount === 0){
+        resolve(results);
+        return;
+      }
+      while(runningCount < limit && index<tasks.length){
+        let currentIndex = index;
+        let task = tasks[index++];
+        runningCount++; //tăng số lượng task đang chạy
+
+        task().then(result=>{
+          results[currentIndex] = result;
+        }).catch(error =>{
+          results[currentIndex] = error;
+        }).finally(()=>{
+          runningCount--;
+          next();
+        })
+      }
+    }
+    next();
+  })
 }
 
 runWithLimit(tasks, 3).then(console.log);
