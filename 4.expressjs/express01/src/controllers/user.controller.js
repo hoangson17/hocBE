@@ -85,7 +85,7 @@ module.exports = {
     },
     updatePatch :async(req,res)=>{
         const id = req.params.userId;
-       
+        console.log(id);
         const {name,email,password} = req.body;
         
         const errors= {}
@@ -107,9 +107,6 @@ module.exports = {
         if(!user){
             throw new HttpException("Server Error",500);
         }
-        if(!user){
-            throw new HttpException("server error",500);
-        }
         return res.status(201).json({
             success:true,
             data:user,
@@ -117,7 +114,12 @@ module.exports = {
             
         });
     },
-    delete: (req,res)=>{
+    delete: async(req,res)=>{
+        const id = req.params.userId;
+        const user = await userModel.delete(id);
+        if(user){
+            throw new HttpException('delete fail',404)
+        }
         return res.json({title:"delete"})
     },
     

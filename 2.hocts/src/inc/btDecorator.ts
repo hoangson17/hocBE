@@ -59,8 +59,21 @@ Giống cách NestJS hoạt động:
 Tạo metadata để sau này router có thể lấy ra được endpoint.
 */
 
-export function Controller(router:string){
-  return function(contructor:Function){
-    contructor.prototype['method'] = router;
-  }
+import 'reflect-metadata';
+
+export function Controller(basePath: string) {
+  return function (target: Function) {
+    Reflect.defineMetadata('basePath', basePath, target);
+  };
+}
+
+export function Route(method: string, path: string) {
+  return function (target: any, propertyKey: string) {
+    const routes: any[] = Reflect.getMetadata('routes', target.constructor) || [];
+    routes.push({
+      method,
+      path,
+    });
+    Reflect.defineMetadata('routes', routes, target.constructor);
+  };
 }

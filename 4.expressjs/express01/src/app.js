@@ -6,6 +6,7 @@ const authMiddleware = require('./middleware/auth.middleware');
 app.use(express.json()); //middleware parser body
 app.use(express.urlencoded());
 // app.use(authMiddleware);
+app.use(express.static("public"));
 app.use("/api",routerIndex);
 
 // Error handling

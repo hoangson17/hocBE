@@ -30,6 +30,7 @@ module.exports = {
             returning *
         `
         console.log(fillable,columns);
+        return updateUser[0];
     },
     updatePatch: async(data,id)=>{
         const fillable = ['name','email','password'];
@@ -49,5 +50,13 @@ module.exports = {
         `;
         console.log(data);
         return updateUser[0]
+    },
+    delete:async(id)=>{
+        console.log(id);
+        return await db`DELETE FROM users
+        WHERE id = ${id}
+        RETURNING *
+        `;
+
     }
 };
