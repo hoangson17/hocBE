@@ -95,4 +95,4 @@ SELECT * FROM `users`
 ORDER BY `id` DESC 
 LIMIT 0, 3; -- offser viet truoc 
 
-
+SELECT * FROM `order_details` GROUP BY `order_id`

@@ -25,3 +25,6 @@ ON `courses`.`id` = `users_courses`.`courses_id`
 INNER JOIN `phones`
 ON `users_courses`.`user_id` = `phones`.`user_id`
 WHERE `phones`.phone LIKE '%22%';
+
+
+-- Bẫy query N+1

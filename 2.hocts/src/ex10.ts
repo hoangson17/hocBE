@@ -55,3 +55,79 @@ const user = new User();
 // console.log(user.latest);
 
 user.setName("acb","a")
+
+
+// function identity<T>(arg: T): T {
+//   return arg;
+// }
+
+// identity<string>("Hello"); // T = string
+// identity<number>(123);     // T = number
+
+
+
+// interface Box<T> {
+//   value: T;
+// }
+
+// const numberBox: Box<number> = { value: 42 };
+// const stringBox: Box<string> = { value: "hello" };
+
+
+// interface ApiResponse<T> {
+//   data: T;
+//   status: number;
+//   message?: string;
+// }
+
+// const userResponse: ApiResponse<{ username: string; email: string }> = {
+//   data: {
+//     username: "son123",
+//     email: "son@gmail.com"
+//   },
+//   status: 200,
+//   message: "Success"
+// };
+
+// vd2
+// interface Pair<K, V> {
+//   key: K;
+//   value: V;
+// }
+
+// const numberToString: Pair<number, string> = {
+//   key: 1,
+//   value: "one"
+// };
+
+// const stringToBoolean: Pair<string, boolean> = {
+//   key: "isAdmin",
+//   value: true
+// };
+
+
+// Ví dụ 3: Dùng generic với class implements interface
+// implements là gì?
+// Dùng để ép một class phải tuân theo cấu trúc của một interface.
+
+// Giúp class đảm bảo có đủ thuộc tính và phương thức được định nghĩa trước trong interface.
+
+// interface Repository<T> {
+//   getAll(): T[];
+//   getById(id: number): T | undefined;
+// }
+
+// class UserRepo implements Repository<{ id: number; name: string }> {
+//   private users = [
+//     { id: 1, name: "Son" },
+//     { id: 2, name: "An" },
+//   ];
+
+//   getAll() {
+//     return this.users;
+//   }
+
+//   getById(id: number) {
+//     return this.users.find(u => u.id === id);
+//   }
+// }
